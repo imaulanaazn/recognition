@@ -25,9 +25,9 @@ const FaceRecognizer: React.FC = () => {
       await faceapi.nets.tinyFaceDetector.loadFromUri(
         "/models/tiny_face_detector"
       );
-      await faceapi.nets.faceLandmark68Net.loadFromUri(
-        "/models/face_landmark_68"
-      );
+      // await faceapi.nets.faceLandmark68Net.loadFromUri(
+      //   "/models/face_landmark_68"
+      // );
       await faceapi.nets.faceRecognitionNet.loadFromUri(
         "/models/face_recognition"
       );
@@ -293,7 +293,7 @@ const FaceRecognizer: React.FC = () => {
 
       {/* {showModal && (
         <RegisterUserModal
-          setPreviewImage={(imagUrl: string) => {
+          setPreviewImage={(imagUrl: string) => { 
             setPreviewImage(imagUrl);
           }}
           previewImage={previewImage}
