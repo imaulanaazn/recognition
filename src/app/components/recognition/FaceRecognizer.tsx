@@ -32,6 +32,7 @@ const FaceRecognizer: React.FC = () => {
         "/models/face_recognition"
       );
     };
+    loadModels();
   }, []);
 
   const startVideo = useCallback(async () => {
