@@ -15,10 +15,6 @@ const FaceRecognizer: React.FC = () => {
     status: "not marked",
   });
   const [cameraActive, setCameraActive] = useState<boolean>(false);
-  const [showModal, setShowModal] = useState(false);
-  const [previewImage, setPreviewImage] = useState("");
-
-  const knownFaces = useRef<{ name: string; descriptor: Float32Array }[]>([]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -49,8 +45,7 @@ const FaceRecognizer: React.FC = () => {
   const stopVideo = useCallback(() => {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
-      const tracks = stream.getTracks();
-      tracks.forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
   }, []);
@@ -68,14 +63,12 @@ const FaceRecognizer: React.FC = () => {
 
         if (containerWidth / containerHeight > videoAspectRatio) {
           canvasHeight = containerHeight;
-          canvasWidth = containerHeight * videoAspectRatio;
+          canvasWidth = canvasHeight * videoAspectRatio;
         } else {
           canvasWidth = containerWidth;
-          canvasHeight = containerWidth / videoAspectRatio;
+          canvasHeight = canvasWidth / videoAspectRatio;
         }
 
-        canvasRef.current.width = canvasWidth;
-        canvasRef.current.height = canvasHeight;
         faceapi.matchDimensions(canvasRef.current, {
           width: canvasWidth,
           height: canvasHeight,
@@ -87,59 +80,67 @@ const FaceRecognizer: React.FC = () => {
   useEffect(() => {
     if (cameraActive) {
       startVideo();
-      if (videoRef.current && canvasRef.current) {
-        videoRef.current.addEventListener("play", () => {
-          updateCanvasSize();
-          window.addEventListener("resize", updateCanvasSize);
 
-          const interval = setInterval(async () => {
-            const detection = await faceapi
-              .detectSingleFace(
-                videoRef.current!,
-                new faceapi.TinyFaceDetectorOptions()
-              )
-              .withFaceLandmarks()
-              .withFaceDescriptor();
+      const handlePlay = () => {
+        updateCanvasSize();
+        window.addEventListener("resize", updateCanvasSize);
 
-            if (detection) {
-              if (canvasRef.current) {
-                const context = canvasRef.current.getContext("2d");
+        const detectFace = async () => {
+          if (!videoRef.current || !canvasRef.current) return;
 
-                // Clear the previous frame
-                context?.clearRect(
-                  0,
-                  0,
-                  canvasRef.current.width,
-                  canvasRef.current.height
-                );
+          const detection = await faceapi
+            .detectSingleFace(
+              videoRef.current,
+              new faceapi.TinyFaceDetectorOptions()
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptor();
 
-                // Flip context horizontally
-                context?.scale(-1, 1);
-                context?.translate(-canvasRef.current.width, 0);
+          if (detection) {
+            const context = canvasRef.current.getContext("2d");
+            if (context) {
+              context.clearRect(
+                0,
+                0,
+                canvasRef.current.width,
+                canvasRef.current.height
+              );
+              context.save();
+              context.scale(-1, 1);
+              context.translate(-canvasRef.current.width, 0);
 
-                const resizedDetections = faceapi.resizeResults(detection, {
-                  width: canvasRef.current.width,
-                  height: canvasRef.current.height,
-                });
+              const resizedDetections = faceapi.resizeResults(detection, {
+                width: canvasRef.current.width,
+                height: canvasRef.current.height,
+              });
 
-                // Draw detections and landmarks
-                faceapi.draw.drawDetections(
-                  canvasRef.current,
-                  resizedDetections
-                );
-                context?.setTransform(1, 0, 0, 1, 0, 0);
-              }
+              faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
+              context.restore();
             }
-          }, 200);
+          }
+        };
 
-          return () => {
-            clearInterval(interval);
-            window.removeEventListener("resize", updateCanvasSize);
-          };
-        });
-      }
-    } else {
-      stopVideo();
+        // Use requestAnimationFrame for smooth rendering
+        const renderLoop = () => {
+          requestAnimationFrame(renderLoop);
+        };
+        renderLoop();
+
+        // Use setInterval for face detection at lower frequency (e.g., every 500ms)
+        const detectionInterval = setInterval(detectFace, 500);
+
+        return () => {
+          clearInterval(detectionInterval);
+          window.removeEventListener("resize", updateCanvasSize);
+        };
+      };
+
+      videoRef.current?.addEventListener("play", handlePlay);
+
+      return () => {
+        videoRef.current?.removeEventListener("play", handlePlay);
+        stopVideo();
+      };
     }
   }, [cameraActive, startVideo, stopVideo, updateCanvasSize]);
 
@@ -155,7 +156,7 @@ const FaceRecognizer: React.FC = () => {
         context.translate(-canvas.width, 0);
         context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const imageData = canvas.toDataURL("image/png");
-        setPreviewImage(imageData); // Save captured image
+        // setPreviewImage(imageData); // Save captured image
       }
     }
   };
@@ -203,7 +204,7 @@ const FaceRecognizer: React.FC = () => {
 
           <button
             onClick={() => {
-              setShowModal(true);
+              // setShowModal(true);
               captureImage();
             }}
             className="text-blue-600 text-sm md:hidden"
@@ -226,7 +227,7 @@ const FaceRecognizer: React.FC = () => {
       <div className="flex justify-start mt-3 hidden md:block">
         <button
           onClick={() => {
-            setShowModal(true);
+            // setShowModal(true);
             captureImage();
           }}
           className="text-blue-600"
