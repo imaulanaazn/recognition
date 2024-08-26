@@ -25,9 +25,9 @@ const FaceRecognizer: React.FC = () => {
       await faceapi.nets.tinyFaceDetector.loadFromUri(
         "/models/tiny_face_detector"
       );
-      // await faceapi.nets.faceLandmark68Net.loadFromUri(
-      //   "/models/face_landmark_68"
-      // );
+      await faceapi.nets.faceLandmark68Net.loadFromUri(
+        "/models/face_landmark_68"
+      );
       await faceapi.nets.faceRecognitionNet.loadFromUri(
         "/models/face_recognition"
       );
@@ -177,10 +177,10 @@ const FaceRecognizer: React.FC = () => {
                   canvasRef.current,
                   resizedDetections
                 );
-                faceapi.draw.drawFaceLandmarks(
-                  canvasRef.current,
-                  resizedDetections
-                );
+                // faceapi.draw.drawFaceLandmarks(
+                //   canvasRef.current,
+                //   resizedDetections
+                // );
 
                 // Reset context after drawing
                 context?.setTransform(1, 0, 0, 1, 0, 0);
