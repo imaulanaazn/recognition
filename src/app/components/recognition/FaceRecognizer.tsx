@@ -84,48 +84,7 @@ const FaceRecognizer: React.FC = () => {
     }
   }, []);
 
-  const isKnownFace = (descriptor: Float32Array) => {
-    const distanceThreshold = 0.6;
-    return knownFaces.current.some((face) => {
-      const distance = faceapi.euclideanDistance(face.descriptor, descriptor);
-      return distance < distanceThreshold;
-    });
-  };
-
-  const handleNewFace = (descriptor: Float32Array) => {
-    if (!isKnownFace(descriptor)) {
-      checkAttendance(descriptor);
-      const newFace = { name: "unknown", descriptor };
-      knownFaces.current = [newFace];
-    } else {
-      console.error("face already detected");
-    }
-  };
-
-  async function checkAttendance(descriptor: Float32Array) {
-    const arrayDescriptor = Array.from(descriptor);
-    try {
-      const response = await fetch("http://localhost:3001/check-attendance", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ faceDescriptor: arrayDescriptor }),
-      });
-      if (response.status === 404) {
-        setDetectedUser({ name: "unknown", status: "not marked" });
-      } else {
-        const result = await response.json();
-        setDetectedUser({ name: result.name, status: "marked" });
-      }
-    } catch (error) {
-      console.error("Error recognizing face:", error);
-    }
-  }
-
   useEffect(() => {
-    const isGoodDetection = (detection: any) => detection.detection.score > 0.9;
-
     if (cameraActive) {
       startVideo();
       if (videoRef.current && canvasRef.current) {
@@ -134,21 +93,15 @@ const FaceRecognizer: React.FC = () => {
           window.addEventListener("resize", updateCanvasSize);
 
           const interval = setInterval(async () => {
-            const detections = await faceapi
-              .detectAllFaces(
+            const detection = await faceapi
+              .detectSingleFace(
                 videoRef.current!,
                 new faceapi.TinyFaceDetectorOptions()
               )
               .withFaceLandmarks()
-              .withFaceDescriptors();
+              .withFaceDescriptor();
 
-            if (detections.length > 0) {
-              const goodDetections = detections.filter(isGoodDetection);
-              if (goodDetections.length > 0) {
-                const faceDescriptor = goodDetections[0].descriptor;
-                handleNewFace(faceDescriptor);
-              }
-
+            if (detection) {
               if (canvasRef.current) {
                 const context = canvasRef.current.getContext("2d");
 
@@ -164,25 +117,16 @@ const FaceRecognizer: React.FC = () => {
                 context?.scale(-1, 1);
                 context?.translate(-canvasRef.current.width, 0);
 
-                const resizedDetections = faceapi.resizeResults(
-                  goodDetections,
-                  {
-                    width: canvasRef.current.width,
-                    height: canvasRef.current.height,
-                  }
-                );
+                const resizedDetections = faceapi.resizeResults(detection, {
+                  width: canvasRef.current.width,
+                  height: canvasRef.current.height,
+                });
 
                 // Draw detections and landmarks
                 faceapi.draw.drawDetections(
                   canvasRef.current,
                   resizedDetections
                 );
-                // faceapi.draw.drawFaceLandmarks(
-                //   canvasRef.current,
-                //   resizedDetections
-                // );
-
-                // Reset context after drawing
                 context?.setTransform(1, 0, 0, 1, 0, 0);
               }
             }
