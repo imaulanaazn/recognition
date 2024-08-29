@@ -83,7 +83,7 @@ const FaceRecognizer: React.FC = () => {
     const detection = await faceapi
       .detectSingleFace(
         videoRef.current!,
-        new faceapi.TinyFaceDetectorOptions()
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 224 })
       )
       .withFaceLandmarks()
       .withFaceDescriptor();
