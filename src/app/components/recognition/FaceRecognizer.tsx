@@ -88,99 +88,83 @@ const FaceRecognizer: React.FC = () => {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
-      // Calculate grayscale value using the luminosity method
       const gray = r * 0.21 + g * 0.72 + b * 0.07;
 
-      data[i] = data[i + 1] = data[i + 2] = gray; // Set R, G, and B to the grayscale value
+      data[i] = data[i + 1] = data[i + 2] = gray;
     }
 
     context.putImageData(imageData, 0, 0);
     return canvas;
   };
 
+  const detectFace = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const tempCanvas = document.createElement("canvas");
+    const tempContext = tempCanvas.getContext("2d");
+    if (!tempContext) return;
+
+    tempCanvas.width = videoRef.current.videoWidth;
+    tempCanvas.height = videoRef.current.videoHeight;
+    tempContext.drawImage(
+      videoRef.current,
+      0,
+      0,
+      tempCanvas.width,
+      tempCanvas.height
+    );
+
+    const grayscaleCanvas = convertToGrayscale(tempCanvas);
+
+    const detection = await faceapi
+      .detectSingleFace(grayscaleCanvas, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (detection) {
+      const context = canvasRef.current.getContext("2d");
+      if (context) {
+        context.clearRect(
+          0,
+          0,
+          canvasRef.current.width,
+          canvasRef.current.height
+        );
+        context.save();
+        context.scale(-1, 1);
+        context.translate(-canvasRef.current.width, 0);
+
+        const resizedDetections = faceapi.resizeResults(detection, {
+          width: canvasRef.current.width,
+          height: canvasRef.current.height,
+        });
+
+        faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
+        context.restore();
+      }
+    }
+    // Schedule the next detection
+    setTimeout(detectFace);
+  }, []);
+
   useEffect(() => {
     if (cameraActive) {
       startVideo();
-
       const handlePlay = () => {
         updateCanvasSize();
         window.addEventListener("resize", updateCanvasSize);
-
-        const detectFace = async () => {
-          if (!videoRef.current || !canvasRef.current) return;
-
-          const tempCanvas = document.createElement("canvas");
-          const tempContext = tempCanvas.getContext("2d");
-          if (!tempContext) return;
-
-          tempCanvas.width = videoRef.current.videoWidth;
-          tempCanvas.height = videoRef.current.videoHeight;
-          tempContext.drawImage(
-            videoRef.current,
-            0,
-            0,
-            tempCanvas.width,
-            tempCanvas.height
-          );
-
-          // Convert the temporary canvas to grayscale
-          const grayscaleCanvas = convertToGrayscale(tempCanvas);
-
-          const detection = await faceapi
-            .detectSingleFace(
-              grayscaleCanvas,
-              new faceapi.TinyFaceDetectorOptions()
-            )
-            .withFaceLandmarks()
-            .withFaceDescriptor();
-
-          if (detection) {
-            const context = canvasRef.current.getContext("2d");
-            if (context) {
-              context.clearRect(
-                0,
-                0,
-                canvasRef.current.width,
-                canvasRef.current.height
-              );
-              context.save();
-              context.scale(-1, 1);
-              context.translate(-canvasRef.current.width, 0);
-
-              const resizedDetections = faceapi.resizeResults(detection, {
-                width: canvasRef.current.width,
-                height: canvasRef.current.height,
-              });
-
-              faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
-              context.restore();
-            }
-          }
-        };
-
-        // Use requestAnimationFrame for smooth rendering
-        const renderLoop = () => {
-          requestAnimationFrame(renderLoop);
-        };
-        renderLoop();
-
-        // Use setInterval for face detection at lower frequency (e.g., every 500ms)
-        const detectionInterval = setInterval(detectFace, 500);
-
-        return () => {
-          clearInterval(detectionInterval);
-          window.removeEventListener("resize", updateCanvasSize);
-        };
+        detectFace(); // Start detection loop
       };
 
       videoRef.current?.addEventListener("play", handlePlay);
 
       return () => {
         videoRef.current?.removeEventListener("play", handlePlay);
+        window.removeEventListener("resize", updateCanvasSize);
         stopVideo();
       };
     }
-  }, [cameraActive, startVideo, stopVideo, updateCanvasSize]);
+  }, [cameraActive, startVideo, stopVideo, updateCanvasSize, detectFace]);
 
   const captureImage = () => {
     if (videoRef.current && cameraActive) {
