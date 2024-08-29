@@ -77,47 +77,14 @@ const FaceRecognizer: React.FC = () => {
     }
   }, []);
 
-  const convertToGrayscale = (canvas: HTMLCanvasElement) => {
-    const context = canvas.getContext("2d");
-    if (!context) return canvas;
-
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const gray = r * 0.21 + g * 0.72 + b * 0.07;
-
-      data[i] = data[i + 1] = data[i + 2] = gray;
-    }
-
-    context.putImageData(imageData, 0, 0);
-    return canvas;
-  };
-
   const detectFace = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const tempCanvas = document.createElement("canvas");
-    const tempContext = tempCanvas.getContext("2d");
-    if (!tempContext) return;
-
-    tempCanvas.width = videoRef.current.videoWidth;
-    tempCanvas.height = videoRef.current.videoHeight;
-    tempContext.drawImage(
-      videoRef.current,
-      0,
-      0,
-      tempCanvas.width,
-      tempCanvas.height
-    );
-
-    const grayscaleCanvas = convertToGrayscale(tempCanvas);
-
     const detection = await faceapi
-      .detectSingleFace(grayscaleCanvas, new faceapi.TinyFaceDetectorOptions())
+      .detectSingleFace(
+        videoRef.current!,
+        new faceapi.TinyFaceDetectorOptions()
+      )
       .withFaceLandmarks()
       .withFaceDescriptor();
 
