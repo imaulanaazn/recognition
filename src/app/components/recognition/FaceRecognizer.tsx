@@ -88,8 +88,9 @@ const FaceRecognizer: React.FC = () => {
       .withFaceLandmarks()
       .withFaceDescriptor();
 
+    const context = canvasRef.current.getContext("2d");
+
     if (detection) {
-      const context = canvasRef.current.getContext("2d");
       if (context) {
         context.clearRect(
           0,
@@ -108,6 +109,16 @@ const FaceRecognizer: React.FC = () => {
 
         faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
         context.restore();
+      }
+    } else {
+      if (context) {
+        context.clearRect(
+          0,
+          0,
+          canvasRef.current.width,
+          canvasRef.current.height
+        );
+        context.save();
       }
     }
     // Schedule the next detection
